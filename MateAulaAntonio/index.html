@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mate a Aula do Tonhão!</title>
+  <meta name="description" content="Jogo arcade pixel art para feira de profissões." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">FEIRA DE PROFISSÕES • DESENVOLVIMENTO DE SISTEMAS</div>
+        <h1>MATE A AULA DO TONHÃO!</h1>
+      </div>
+      <div class="top-actions">
+        <button id="helpBtn" class="btn subtle">AJUDA</button>
+        <button id="fullscreenBtn" class="btn subtle">TELA CHEIA</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <section class="game-panel">
+        <div class="strip top-strip">
+          <span id="playerTag">JOGADOR: —</span>
+          <span id="classTag">TURMA: —</span>
+          <span id="modeTag">MODO: AGUARDANDO</span>
+        </div>
+
+        <div id="canvasWrap" class="canvas-wrap">
+          <canvas id="game" width="960" height="600"></canvas>
+
+          <div id="crosshair" class="crosshair" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><b></b>
+          </div>
+
+          <div class="hud left">
+            <div class="hud-card">
+              <small>PONTOS</small>
+              <strong id="scoreEl">000000</strong>
+            </div>
+            <div class="hud-card">
+              <small>COMBO</small>
+              <strong id="comboEl">x1</strong>
+            </div>
+          </div>
+
+          <div class="hud right">
+            <div class="hud-card">
+              <small>VIDA</small>
+              <div class="bar"><i id="healthBar"></i></div>
+              <strong id="healthEl">100</strong>
+            </div>
+            <div class="hud-card">
+              <small>MUNIÇÃO</small>
+              <strong id="ammoEl">6 / ∞</strong>
+            </div>
+          </div>
+
+          <div class="weapon" id="weapon" aria-hidden="true">
+            <div class="weapon-arm"></div>
+            <div class="weapon-body">
+              <div class="weapon-slide"></div>
+              <div class="weapon-sight"></div>
+              <div class="weapon-flash" id="weaponFlash"></div>
+            </div>
+          </div>
+
+          <div id="announce" class="announce hidden">
+            <strong id="announceTitle"></strong>
+            <span id="announceText"></span>
+          </div>
+
+          <!-- MENU -->
+          <div id="menuOverlay" class="overlay">
+            <div class="menu-card">
+              <div class="menu-hero">
+                <img src="assets/tonhao_preto.png" alt="Sprite do Tonhão" class="menu-sprite" />
+                <div class="menu-copy">
+                  <div class="badge">PIXEL ARCADE</div>
+                  <h2>MATE A AULA<br>DO TONHÃO!</h2>
+                  <p>Um minigame arcade em pixel art. Mire com o mouse, atire e sobreviva às ondas que vêm do corredor da escola.</p>
+                  <div class="menu-actions">
+                    <button id="playBtn" class="btn primary big">PLAY</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETUP -->
+          <div id="setupOverlay" class="overlay hidden">
+            <div class="card">
+              <div class="badge">NOVA PARTIDA</div>
+              <h3>QUEM VAI JOGAR?</h3>
+              <p>Preencha para entrar no ranking.</p>
+
+              <label>NOME
+                <input id="nameInput" maxlength="18" placeholder="Ex.: Carlos" />
+              </label>
+
+              <label>TURMA
+                <input id="classInput" maxlength="12" placeholder="Ex.: 2º DS A" />
+              </label>
+
+              <div class="setup-actions">
+                <button id="startBtn" class="btn primary">COMEÇAR</button>
+                <button id="testBtn" class="btn subtle">MODO TESTE</button>
+                <button id="backBtn" class="btn subtle">VOLTAR</button>
+              </div>
+
+              <div class="tiprow">
+                <span>🖱️ Mouse: mirar</span>
+                <span>🔫 Clique: atirar</span>
+                <span>R: recarregar</span>
+                <span>ESC: pausar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAUSE -->
+          <div id="pauseOverlay" class="overlay hidden">
+            <div class="card compact">
+              <div class="badge">PAUSA</div>
+              <h3>JOGO PAUSADO</h3>
+              <div class="setup-actions">
+                <button id="resumeBtn" class="btn primary">CONTINUAR</button>
+                <button id="quitBtn" class="btn subtle">SAIR</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- GAME OVER -->
+          <div id="gameOverOverlay" class="overlay hidden">
+            <div class="card compact">
+              <div class="badge danger">FIM DE JOGO</div>
+              <h3 id="gameOverTitle">A AULA TE PEGOU.</h3>
+              <p id="finalStats">0 pontos</p>
+              <div class="setup-actions">
+                <button id="restartBtn" class="btn primary">JOGAR NOVAMENTE</button>
+                <button id="homeBtn" class="btn subtle">MENU INICIAL</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="strip bottom-strip">
+          <span>ONDA <b id="waveEl">0</b></span>
+          <span>ABATES <b id="killsEl">0</b></span>
+          <span>PRECISÃO <b id="accuracyEl">0%</b></span>
+          <span>RECORDE <b id="recordEl">0</b></span>
+        </div>
+      </section>
+
+      <aside class="rank-panel">
+        <div class="rank-head">
+          <div>
+            <small>RANKING</small>
+            <h2>MELHORES DA FEIRA</h2>
+          </div>
+          <button id="clearBtn" class="icon-btn" title="Limpar placar">↻</button>
+        </div>
+
+        <div class="podium">
+          <div class="podium-card second">
+            <span>2º</span>
+            <b id="p2Name">—</b>
+            <small id="p2Score">0</small>
+          </div>
+          <div class="podium-card first">
+            <span>1º</span>
+            <b id="p1Name">—</b>
+            <small id="p1Score">0</small>
+          </div>
+          <div class="podium-card third">
+            <span>3º</span>
+            <b id="p3Name">—</b>
+            <small id="p3Score">0</small>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Nome</th><th>Turma</th><th>Pontos</th></tr>
+            </thead>
+            <tbody id="scoreBody"></tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <strong>OBS.</strong>
+          <span>O placar fica salvo neste navegador. Ideal para usar um notebook só durante a feira.</span>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <dialog id="helpDialog">
+    <div class="dialog-inner">
+      <button id="closeHelpBtn" class="close-btn">×</button>
+      <div class="badge">COMO JOGAR</div>
+      <h3>REGRAS RÁPIDAS</h3>
+      <ul>
+        <li>Mova o mouse para mirar.</li>
+        <li>Clique para atirar.</li>
+        <li>Aperte <b>R</b> para recarregar.</li>
+        <li>Aperte <b>ESC</b> para pausar.</li>
+        <li>Os inimigos vêm pela frente do corredor.</li>
+        <li>Quanto maior o combo, mais pontos você ganha.</li>
+        <li>No <b>Modo Teste</b>, o ranking não é alterado.</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
