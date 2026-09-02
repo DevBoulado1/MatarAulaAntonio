@@ -253,6 +253,8 @@
       type: 'boss',
       sprite: sprites[0],
       hitFlash: 0
+      hitFlash: 0,
+      walkOffset: 0
     });
     showMsg('NÃO FALE MAL DO GRÊMIO', 'você falou mal do Grêmio', 2800, true);
     beep(72, .32, 'sawtooth', .035);
@@ -467,6 +469,10 @@
       const p = enemyScreen(e);
       if(e.sprite.complete){
         sctx.save();
+        // Três poses rápidas (esquerda, centro, direita) dão a cada Antonio uma caminhada contínua.
+        const walkFrame = Math.floor(performance.now() / 115 + e.lane * 7) % 3;
+        const walkX = walkFrame === 0 ? -1 : walkFrame === 2 ? 1 : 0;
+        const walkY = walkFrame === 1 ? 0 : 1;
         if(e.hitFlash > 0){
           sctx.globalAlpha = .5;
           sctx.fillStyle = '#ff6e78';
@@ -481,6 +487,9 @@
 
         drawWalkingAntonio(e.sprite, p, e.lane);
         if(e.type === 'boss') drawGremioShirt(p);
+        sctx.drawImage(e.sprite, Math.round(p.x-p.w/2 + walkX), Math.round(p.y-p.h + walkY), Math.round(p.w), Math.round(p.h));
+
+        if(e.type === 'boss') drawGremioShirt(p, walkX, walkY);
 
         if(e.maxHp > 1){
           sctx.fillStyle = '#2a3038';
@@ -519,6 +528,10 @@
     // Uniforme do boss é desenhado por código sobre o sprite base, sem asset novo.
     const x = Math.round(p.x - p.w*.27);
     const y = Math.round(p.y - p.h*.62);
+  function drawGremioShirt(p, walkX, walkY){
+    // Uniforme pixelado aplicado sobre o torso do sprite do boss.
+    const x = Math.round(p.x - p.w*.27 + walkX);
+    const y = Math.round(p.y - p.h*.62 + walkY);
     const w = Math.round(p.w*.54);
     const h = Math.round(p.h*.31);
     sctx.save();
