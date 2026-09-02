@@ -40,6 +40,7 @@
     finalStats: document.getElementById('finalStats'),
     gameOverTitle: document.getElementById('gameOverTitle'),
     weapon: document.getElementById('weapon'),
+    weaponBuff: document.getElementById('weaponBuffEl'),
     flash: document.getElementById('weaponFlash'),
     nameInput: document.getElementById('nameInput'),
     classInput: document.getElementById('classInput')
@@ -65,7 +66,7 @@
   let state = 'menu';
   let testMode = false;
   let player = {name:'', turma:''};
-  let score=0, combo=1, health=100, ammo=6, kills=0, shots=0, hits=0, wave=0;
+  let score=0, combo=1, health=100, ammo=6, kills=0, shots=0, hits=0, wave=0, weaponBuff=0;
   let spawnTimer=0, waveTimer=0, comboTimer=0, reloadUntil=0, difficulty=1, gameStart=0;
   let enemies=[], particles=[], tracers=[];
   let mouse = {x:canvas.width/2, y:canvas.height/2};
@@ -129,7 +130,7 @@
     player.name = isTest ? 'TESTE' : (ui.nameInput.value.trim() || 'JOGADOR');
     player.turma = isTest ? 'DEMO' : (ui.classInput.value.trim() || '—');
 
-    score=0; combo=1; health=100; ammo=6; kills=0; shots=0; hits=0; wave=0;
+    score=0; combo=1; health=100; ammo=6; kills=0; shots=0; hits=0; wave=0; weaponBuff=0;
     spawnTimer=.7; waveTimer=0; comboTimer=0; reloadUntil=0; difficulty=1; gameStart=performance.now();
     enemies=[]; particles=[]; tracers=[]; shake=0; screenFlash=0;
     state = 'playing';
@@ -174,17 +175,22 @@
     }
   }
 
-  function showMsg(title, text, ms=900){
+  function showMsg(title, text, ms=900, bossWarning=false){
     ui.announceTitle.textContent = title;
     ui.announceText.textContent = text;
+    ui.announce.classList.toggle('boss-warning', bossWarning);
     ui.announce.classList.remove('hidden');
     clearTimeout(showMsg.t);
-    showMsg.t = setTimeout(()=>ui.announce.classList.add('hidden'), ms);
+    showMsg.t = setTimeout(()=>{
+      ui.announce.classList.add('hidden');
+      ui.announce.classList.remove('boss-warning');
+    }, ms);
   }
 
   function updateHUD(){
     ui.score.textContent = String(score).padStart(6,'0');
     ui.combo.textContent = `x${combo}`;
+    ui.weaponBuff.textContent = `NV. ${weaponBuff}`;
     ui.health.textContent = Math.round(health);
     ui.healthBar.style.width = `${clamp(health,0,100)}%`;
     ui.healthBar.style.background = health>55 ? '#61da8b' : health>25 ? '#ffb84d' : '#ff5a6a';
@@ -233,6 +239,25 @@
     });
   }
 
+  function spawnBoss(){
+    const bossHp = 28 + Math.floor(difficulty * 4);
+    // A rodada de boss fica exclusiva: os spawns normais só voltam após ele cair.
+    enemies.push({
+      lane: 0,
+      z: 1.12,
+      hp: bossHp,
+      maxHp: bossHp,
+      speed: .027 * (1 + difficulty * .035),
+      worth: 2200,
+      scale: 1.42,
+      type: 'boss',
+      sprite: sprites[0],
+      hitFlash: 0
+    });
+    showMsg('NÃO FALE MAL DO GRÊMIO', 'você falou mal do Grêmio', 2800, true);
+    beep(72, .32, 'sawtooth', .035);
+  }
+
   function enemyScreen(e){
     const perspective = 1/(e.z+.08);
     const t = clamp(1 - e.z, 0, 1);
@@ -278,7 +303,7 @@
     }
     if(target){
       hits++;
-      target.hp--;
+      target.hp -= 1 + weaponBuff;
       target.hitFlash = .1;
       spawnHitParticles(mouse.x/3, mouse.y/3);
       beep(400,.02,'square',.016);
@@ -329,6 +354,10 @@
     kills++;
     score += (enemy.worth + Math.round(enemy.z*80))*combo;
     spawnDeathParticles(s.x, s.y-s.h*.6, s.h);
+    if(enemy.type === 'boss'){
+      showMsg('BOSS DERROTADO!', 'O corredor está livre de novo.', 1200);
+      beep(520, .12, 'square', .03);
+    }
     if(kills % 10 === 0){
       health = clamp(health+10, 0, 100);
       showMsg('10 ABATES!', '+10 VIDA', 850);
@@ -353,7 +382,8 @@
     spawnTimer -= dt;
     waveTimer += dt;
     const interval = clamp(1.08 - difficulty*.08, .34, 1.08);
-    if(spawnTimer <= 0){
+    const bossAlive = enemies.some(e => e.type === 'boss');
+    if(spawnTimer <= 0 && !bossAlive && wave % 5 !== 0){
       spawnEnemy();
       if(Math.random() < Math.min(.28, (difficulty-1)*.06)) spawnEnemy();
       spawnTimer = interval * rand(.72,1.14);
@@ -362,7 +392,17 @@
     const newWave = Math.floor(waveTimer/15)+1;
     if(newWave !== wave){
       wave = newWave;
-      if(wave > 1) showMsg(`ONDA ${wave}`, 'Eles estão vindo mais rápido.', 900);
+      if(wave % 5 === 0){
+        enemies = [];
+        spawnBoss();
+      }else if(wave > 1){
+        showMsg(`ONDA ${wave}`, 'Eles estão vindo mais rápido.', 900);
+        if((wave - 1) % 10 === 0){
+          weaponBuff++;
+          showMsg('BUFF DE ARMA!', `10 rodadas vencidas: dano +${weaponBuff}`, 1500);
+          beep(620, .12, 'square', .025);
+        }
+      }
     }
 
     for(const e of enemies){
@@ -370,7 +410,7 @@
       e.hitFlash = Math.max(0, e.hitFlash-dt);
       if(e.z <= .08){
         e.dead = true;
-        damagePlayer(e.type === 'tank' ? 28 : e.type === 'fast' ? 16 : 20);
+        damagePlayer(e.type === 'boss' ? 45 : e.type === 'tank' ? 28 : e.type === 'fast' ? 16 : 20);
       }
     }
     enemies = enemies.filter(e => !e.dead);
@@ -439,7 +479,8 @@
         sctx.ellipse(p.x, p.y+4, p.w*.34, p.h*.08, 0, 0, Math.PI*2);
         sctx.fill();
 
-        sctx.drawImage(e.sprite, Math.round(p.x-p.w/2), Math.round(p.y-p.h), Math.round(p.w), Math.round(p.h));
+        drawWalkingAntonio(e.sprite, p, e.lane);
+        if(e.type === 'boss') drawGremioShirt(p);
 
         if(e.maxHp > 1){
           sctx.fillStyle = '#2a3038';
@@ -450,6 +491,50 @@
         sctx.restore();
       }
     });
+  }
+
+  function drawWalkingAntonio(sprite, p, lane){
+    // Gera os três keyframes no Canvas, sem arquivos binários extras:
+    // tronco, perna esquerda e perna direita são desenhados separadamente.
+    const frame = Math.floor(performance.now() / 125 + lane * 7) % 3;
+    const step = frame === 0 ? -p.w*.045 : frame === 2 ? p.w*.045 : 0;
+    const bob = frame === 1 ? 0 : 1;
+    const sw = sprite.naturalWidth;
+    const sh = sprite.naturalHeight;
+    const dx = Math.round(p.x-p.w/2);
+    const dy = Math.round(p.y-p.h+bob);
+    const bodyEnd = Math.floor(sh*.59);
+    const legStart = Math.floor(sh*.54);
+    const leftEnd = Math.floor(sw*.59);
+    const rightStart = Math.floor(sw*.41);
+
+    sctx.drawImage(sprite, 0, 0, sw, bodyEnd, dx, dy, p.w, p.h*(bodyEnd/sh));
+    sctx.drawImage(sprite, 0, legStart, leftEnd, sh-legStart,
+      Math.round(dx-step), Math.round(dy+p.h*(legStart/sh)), p.w*(leftEnd/sw), p.h*((sh-legStart)/sh));
+    sctx.drawImage(sprite, rightStart, legStart, sw-rightStart, sh-legStart,
+      Math.round(dx-step*-1), Math.round(dy+p.h*(legStart/sh)), p.w*((sw-rightStart)/sw), p.h*((sh-legStart)/sh));
+  }
+
+  function drawGremioShirt(p){
+    // Uniforme do boss é desenhado por código sobre o sprite base, sem asset novo.
+    const x = Math.round(p.x - p.w*.27);
+    const y = Math.round(p.y - p.h*.62);
+    const w = Math.round(p.w*.54);
+    const h = Math.round(p.h*.31);
+    sctx.save();
+    sctx.fillStyle = '#07121d';
+    sctx.fillRect(x-1, y-1, w+2, h+2);
+    const stripe = w / 5;
+    ['#1687d4', '#f2f5f3', '#111921', '#1687d4', '#f2f5f3'].forEach((color, i) => {
+      sctx.fillStyle = color;
+      sctx.fillRect(Math.round(x + stripe*i), y, Math.ceil(stripe), h);
+    });
+    sctx.fillStyle = '#dceef8';
+    sctx.fillRect(Math.round(x+w*.37), Math.round(y+h*.43), Math.max(5, Math.round(w*.25)), Math.max(5, Math.round(h*.27)));
+    sctx.fillStyle = '#10263d';
+    sctx.font = `${Math.max(3, Math.round(p.h*.045))}px monospace`;
+    sctx.fillText('G', Math.round(x+w*.45), Math.round(y+h*.65));
+    sctx.restore();
   }
 
   function drawParticles(){
