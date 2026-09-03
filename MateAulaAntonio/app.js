@@ -252,7 +252,6 @@
       scale: 1.42,
       type: 'boss',
       sprite: sprites[0],
-      hitFlash: 0
       hitFlash: 0,
       walkOffset: 0
     });
@@ -485,8 +484,6 @@
         sctx.ellipse(p.x, p.y+4, p.w*.34, p.h*.08, 0, 0, Math.PI*2);
         sctx.fill();
 
-        drawWalkingAntonio(e.sprite, p, e.lane);
-        if(e.type === 'boss') drawGremioShirt(p);
         sctx.drawImage(e.sprite, Math.round(p.x-p.w/2 + walkX), Math.round(p.y-p.h + walkY), Math.round(p.w), Math.round(p.h));
 
         if(e.type === 'boss') drawGremioShirt(p, walkX, walkY);
@@ -502,32 +499,6 @@
     });
   }
 
-  function drawWalkingAntonio(sprite, p, lane){
-    // Gera os três keyframes no Canvas, sem arquivos binários extras:
-    // tronco, perna esquerda e perna direita são desenhados separadamente.
-    const frame = Math.floor(performance.now() / 125 + lane * 7) % 3;
-    const step = frame === 0 ? -p.w*.045 : frame === 2 ? p.w*.045 : 0;
-    const bob = frame === 1 ? 0 : 1;
-    const sw = sprite.naturalWidth;
-    const sh = sprite.naturalHeight;
-    const dx = Math.round(p.x-p.w/2);
-    const dy = Math.round(p.y-p.h+bob);
-    const bodyEnd = Math.floor(sh*.59);
-    const legStart = Math.floor(sh*.54);
-    const leftEnd = Math.floor(sw*.59);
-    const rightStart = Math.floor(sw*.41);
-
-    sctx.drawImage(sprite, 0, 0, sw, bodyEnd, dx, dy, p.w, p.h*(bodyEnd/sh));
-    sctx.drawImage(sprite, 0, legStart, leftEnd, sh-legStart,
-      Math.round(dx-step), Math.round(dy+p.h*(legStart/sh)), p.w*(leftEnd/sw), p.h*((sh-legStart)/sh));
-    sctx.drawImage(sprite, rightStart, legStart, sw-rightStart, sh-legStart,
-      Math.round(dx-step*-1), Math.round(dy+p.h*(legStart/sh)), p.w*((sw-rightStart)/sw), p.h*((sh-legStart)/sh));
-  }
-
-  function drawGremioShirt(p){
-    // Uniforme do boss é desenhado por código sobre o sprite base, sem asset novo.
-    const x = Math.round(p.x - p.w*.27);
-    const y = Math.round(p.y - p.h*.62);
   function drawGremioShirt(p, walkX, walkY){
     // Uniforme pixelado aplicado sobre o torso do sprite do boss.
     const x = Math.round(p.x - p.w*.27 + walkX);
